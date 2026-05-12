@@ -1,43 +1,84 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/BK9AX0KL)
-# RabbitMQ-Example
-Example based on Tanenbaum &amp; van Steen (2025)
+# RabbitMQ — Sistema de Pedidos de Lanchonete
 
-# Steps to run:
+Exemplo produtor-consumidor com RabbitMQ usando Python (`rabbitpy`).  
+Tema: pedidos de uma lanchonete roteados para três filas (Cozinha, Bar, Caixa).
 
-## Ports to open on the firewall (security group on AWS):
-```
-5671-5672
-```
+---
 
-## Install the RabbitMQ broker on a server machine:
-You may use the provided script for installation (install_rabbitmq.sh)
-```
-sudo install_rabbitmq.sh
-```
-*Note:* Make sure the file is executable (chmod 770 install_rabbitmq.sh)
+## Arquitetura
 
-See installation and configuration details on: https://www.rabbitmq.com/docs/install-debian#apt-quick-start (although the defaults should work just fine for our purposes).
-
-### Once installed, put the broker to run:
 ```
-sudo systemctl start rabbitmq-server
-```
-### Then create a new RabbitMQ user and password:
-```
-sudo rabbitmqctl add_user myuser abc123
-```
-### Now create a vhost in the RabbitMQ server (a vhost is like a container for message queues)?
-```
-sudo rabbitmqctl add_vhost my_vhost
-```
-### And give the new user the required permisssions to access the vhost:
-```
-sudo rabbitmqctl set_permissions -p my_vhost myuser ".*" ".*" ".*"
+[producer.py / producer-book.py]
+                  |
+          Exchange: lanchonete
+         /          |          \
+pedido.comida  pedido.bebida  pedido.caixa
+      |              |              |
+[QUEUE_COMIDA] [QUEUE_BEBIDA]  [QUEUE_CAIXA]
+      |              |              |
+  [Cozinha]        [Bar]         [Caixa]
+        \            |            /
+         [consumer.py / consumer-book.py]
 ```
 
-## Finally, install the RabbitMQ python client on the machines where producers and consumers will run:
-```
-pip install rabbitpy
+---
+
+## Pré-requisitos (Windows)
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado e rodando
+- Python 3 com `rabbitpy`:
+  ```
+  pip install rabbitpy
+  ```
+
+---
+
+## 1. Subir o RabbitMQ via Docker
+
+Execute **uma única vez** no PowerShell ou CMD:
+
+```powershell
+docker run -d --name rabbitmq ^
+  -p 5672:5672 -p 15672:15672 ^
+  rabbitmq:3-management
 ```
 
-*Note:* Make sure the IP address of the RabbitMQ server is correctly set in const.py
+Criar o usuário e o vhost:
+
+```powershell
+docker exec rabbitmq rabbitmqctl add_user myuser abc123
+docker exec rabbitmq rabbitmqctl add_vhost my_vhost
+docker exec rabbitmq rabbitmqctl set_permissions -p my_vhost myuser ".*" ".*" ".*"
+```
+
+---
+
+## 2. Configuração
+
+Edite `const.py` se necessário (padrão já aponta para `localhost`).
+
+---
+
+## 3. Executar
+
+**Terminal 1 — Consumidor:**
+```
+python consumer.py
+```
+
+**Terminal 2 — Produtor:**
+```
+python producer.py
+```
+
+**Terminal 3 — Produtores (Mesas 2, 3 e 4):**
+```
+python producer-book.py
+```
+
+**Terminal 4 — Consumidores (Cozinha, Bar e Caixa em paralelo):**
+```
+python consumer-book.py
+```
+
+---
